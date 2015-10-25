@@ -1,0 +1,16 @@
+{
+  "name": "improveise-dk",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "",
+    "start": "node server.js"
+  },
+  "author": "Improveise",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.13.3",
+    "socket.io": "^1.3.7"
+  }
+}
