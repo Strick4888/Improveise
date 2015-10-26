@@ -37,7 +37,7 @@
                 <h1>Game Screen</h1>
                 <div>
                     Accepted Dialogue:
-                    <div id="acceptedMsgs">
+                    <div id="acceptedMsgs" style="height: 350px; max-height: 350px; overflow-y: scroll;">
                         <div ng-repeat="msg in acceptedMsgs" style="margin-top: 10px;">
                             Sailor1: {{ msg }}
                         </div>
@@ -57,19 +57,24 @@
                     Don't: <br/>
                     Conversational topics: <br/>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-8">
                     <div>
-                        Chatting log: {{ messages }}
+                        Chatting log: {{ messages }} <br/>
+                        You are inside a pirate ship - battle the Kraken to the death <br/>
                         <div id="messages" style="height: 300px;">
                             <div ng-repeat="msg in messages" style="margin-top: 10px;">
-                                <button>downvote</button>
-                                <button>upvote</button>
-                                {{ msg }}
+                                <button ng-click="msg.votes = msg.votes-1">&darr;</button>
+                                <button ng-click="voteUp(msg);">&uarr;</button>
+                                <div style="display: inline-block; width: 100px;">{{ msg.votes }}</div>
+                                {{ msg.username }} : {{ msg.msg }}
                             </div>
                         </div>
                     </div>
                     <div>
-                        Sailor:name <input id="user_msg" type="text" placeholder="input text"/>
+                        <div style="display: inline-block; width: 100px;">Name</div>
+                        <input ng-model="user_id" id="user_id" type="text" placeholder="input text"/> <br/>
+                        <div style="display: inline-block; width: 100px;">Dialogue</div>
+                        <input id="user_msg" type="text" placeholder="input text"/>
                         <button onclick="sendMsg()">submit</button>
                     </div>
                 </div>
@@ -93,7 +98,7 @@
             <div class="col-md-8">
                 <h1>Main Lobby</h1>
                 Quests:
-                
+
             </div>
         </div>
     </div>
