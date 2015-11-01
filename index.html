@@ -2,7 +2,7 @@
 <head>
   <meta charset="utf-8">
 
-  <title>My Parse App</title>
+  <title>Improve-ise</title>
   <meta name="description" content="My Parse App">
   <meta name="viewport" content="width=device-width">
   <link rel="stylesheet" href="css/reset.css">
@@ -33,7 +33,7 @@
     <div ng-controller="MainCtrl" style="text-align: left">
         <div class="row">
             <!--------------------------------------------------------------------------------- -->
-            <div class="col-md-4">
+            <div class="col-md-2">
                 <h1>Game Screen</h1>
                 <div>
                     Accepted Dialogue:
@@ -46,38 +46,116 @@
             </div>
 
             <!--------------------------------------------------------------------------------- -->
-            <div class="col-md-8">
+            <div class="col-md-10">
                 <h1>Acting Game Screen</h1>
+                <div class="col-md-8">
+                    <div>
+                        <div style="margin-bottom: 10px; ">
+                            <div style="display:inline-block; font-size: 150%;">Chatting Log</div>
+                            <div style="display:inline-block; text-align: center; font-size: 120%; margin-left: 200px;">
+                                (Round Timer: {{ roundTime }} secs left)
+                            </div>
+                            <button class="btn btn-success" style="float: right;" ng-click="roundTime = 0">fin timer</button>
+                        </div>
+                        <!--{{ messages }} <br/>-->
+                        <div class="bg-primary" style="padding: 10px;">
+                            You are inside a pirate ship - battle the Kraken to the death
+                        </div>
+                        <div id="messages" style="height: 300px;; overflow-y: scroll; margin-bottom: 20px;">
+                            <div ng-repeat="msg in messages" style="margin-top: 10px;">
+                                <div ng-if="msg.userId == systemId">
+                                    <span style="margin-left: 150px;">{{ msg.msg }}</span>
+                                </div>
+                                <div ng-if="msg.userId != systemId">
+                                    <button ng-click="voteDown(msg)" class="btn btn-danger" ng-disabled="msg.userId == userId || getMyVote(msg) == -1">&darr;</button>
+                                    <button ng-click="voteUp(msg)" class="btn btn-success" ng-disabled="msg.userId == userId || getMyVote(msg) == 1">&uarr;</button>
+                                    <div style="display: inline-block; width: 100px;">t:{{ msg.votesTot.length }} m:{{ getMyVote(msg) }}</div>
+                                    <!-- {{ msg.votes }}-->
+                                    <b>Sailor ({{ msg.username }})</b> : {{ msg.msg }}
+                                    <button class="btn btn-success" style="float: right; margin-right: 10px;"
+                                            ng-click="replyTarget(msg)" ng-hide="msg.userId == userId">Reply to</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div style="display: inline-block; width: 50%; vertical-align: top">
+                            <div style="display: inline-block; width: 100px;">Name</div>
+                            <input ng-model="username" id="user_id" type="text" placeholder="input stage name" ng-disabled="userId != ''"/>
+                            <!--<span ng-show="userId != ''"  style="width: 200px;">{{ username }}</span>-->
+                            <button ng-click="joinRound()" ng-show="userId == ''" class="btn btn-primary btn-sm" >Join</button>
+                            <span ng-show="userId != ''">Play!</span>
+                            <div ng-show="phaseNo == 0">
+                                <div style="margin-top: 10px;">
+                                    <div style="display: inline-block; width: 100px;">Dialogue</div>
+                                    <input id="user_msg" type="text" placeholder="input text" ng-disabled="userId == ''"/>
+                                    <button ng-click="sendMsg()" ng-disabled="userId == '' || gameover" class="btn btn-primary btn-sm">submit</button>
+                                </div>
+                                <div style="margin-top: 10px;">
+                                    <div style="display: inline-block; width: 480px; text-wrap: none;">
+                                        In reply to msg: <span style="margin-left: 50px;"><b>{{ replyingTo.username }}</b>: {{ replyingTo.msg }}</span></div>
+                                    <div>
+                                        <button class="btn btn-primary btn-sm" ng-click="replyingTo = ''" style="margin-top: 10px;">Clear</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div ng-show="phaseNo == 1" style="margin-top: 30px;">
+                                <b>Judgement Time</b> <br/>
+                                You have 60 seconds left to judge other's lines. <br/>
+                                Final chance to get judgement points <br/>
+                                Beware: Not aligning with majority will lose all your points
+                            </div>
+                            <div ng-show="phaseNo == 2" style="margin-top: 30px;">
+                                <b>Round Finished!</b>
+                            </div>
+                            <br/>
+                            <div ng-show="userId == ''">
+                                Join the Round to Start the Game!
+                            </div>
+                            <div ng-show="gameover">
+                                You have died~!
+                            </div>
+                        </div>
+                        <div style="display: inline-block; width: 40%;vertical-align: top">
+                            Stabbed: {{ numStabs }} / 3 (Be careful: you will die upon 3 stabs)<br/>
+                            Score: {{ curScore }} <br/>
+                            Judgement Points: {{ curJudgePoints }} (caution: you will be judged) <br/>
+                            Spectators: 0 <br/>
+                        </div>
+                    </div>
+                </div>
+                <!-- ---------------------------------------- -->
                 <div class="col-md-4" style="">
-                    Sailors <br/>
+                    <h3>Quest Info</h3>
+                    Title: "Sailors"  <br/>
                     Setting(scenario): A pirate ship in the Caribbean, 1715 <br/>
                     Context: Recently pirate ships have been sunk by the Kraken <br/>
                     Character: A male sailor on the ship <br/>
                     Do:  <br/>
                     Don't: <br/>
                     Conversational topics: <br/>
-                </div>
-                <div class="col-md-8">
-                    <div>
-                        Chatting log: {{ messages }} <br/>
-                        You are inside a pirate ship - battle the Kraken to the death <br/>
-                        <div id="messages" style="height: 300px;">
-                            <div ng-repeat="msg in messages" style="margin-top: 10px;">
-                                <button ng-click="msg.votes = msg.votes-1">&darr;</button>
-                                <button ng-click="voteUp(msg);">&uarr;</button>
-                                <div style="display: inline-block; width: 100px;">{{ msg.votes }}</div>
-                                {{ msg.username }} : {{ msg.msg }}
-                            </div>
+                    <br/>
+                    <h4>At the end of the round:</h4>
+                    Your points will be based on how well you have verified against the majority
+                    <br/>
+                    <div style="margin-top: 30px;">
+                        <h4>Current Phase</h4>
+                        <div ng-if="phaseNo == 0">
+                            On Stage
+                        </div>
+                        <div ng-if="phaseNo == 1">
+                            Judgement Time
                         </div>
                     </div>
-                    <div>
-                        <div style="display: inline-block; width: 100px;">Name</div>
-                        <input ng-model="user_id" id="user_id" type="text" placeholder="input text"/> <br/>
-                        <div style="display: inline-block; width: 100px;">Dialogue</div>
-                        <input id="user_msg" type="text" placeholder="input text"/>
-                        <button onclick="sendMsg()">submit</button>
+                    <div style="margin-top: 30px;">
+                        <h4>Timer</h4>
+                        <div style="font-size: 150%;">
+                            {{ timeLeftForAction }} secs
+                        </div>
+                        left to reply, otherwise the Kraken might look at you
                     </div>
                 </div>
+                <!-- ---------------------------------------- -->
             </div>
         </div>
         <div class="row">
