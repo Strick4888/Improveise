@@ -25,7 +25,7 @@ var queryObject = new Parse.Query(DialogueObject);
 var socket = io(); //initialise socket.io
 
 ///////////////////////////////////////////////////////////////////////////////////
-var threshold_good = 3;
+var threshold_good = 1;
 
 app.controller("MainCtrl", function($scope, $interval) {
     //$scope.messages = { 1: { username: "undead", userid: "", msg: "Yo", votes: 0 } };
@@ -40,6 +40,8 @@ app.controller("MainCtrl", function($scope, $interval) {
     $scope.roundTimeMax = 300; //500;
     $scope.roundTime = $scope.roundTimeMax;
     $scope.phaseNo = 0; //0: act, 1: judgement, 2: ended
+
+    $scope.convoIdx = Date.now();
 
     $scope.timeMaxForReply = 150;
     $scope.timeLeftForAction = $scope.timeMaxForReply;
@@ -92,7 +94,7 @@ app.controller("MainCtrl", function($scope, $interval) {
             username: $scope.username,
             userId: $scope.userId,
             //msg: $scope.replyingTo.username === undefined ? msgText : +"<b>"+msgText+"</b>" + " (to: "+$scope.replyingTo.username+") ",
-            msg: $scope.replyingTo.username === undefined ? msgText : +msgText + " (to: "+$scope.replyingTo.username+") ",
+            msg: $scope.replyingTo.username === undefined ? msgText : msgText + " (to: "+$scope.replyingTo.username+") ",
             votes: 0, //overall + / -
             votesTot: [],
             replyingToIdx: $scope.replyingTo == "" ? -1 : $scope.replyingTo.msgIdx
@@ -127,15 +129,15 @@ app.controller("MainCtrl", function($scope, $interval) {
     };
     socket.on('upVote', function( rel_info ){
         var msg = $scope.getMsgWithIdx( rel_info.judgedMsg.msgIdx);
-        console.log(msg);
-        console.log("my id:" + $scope.userId);
+        //console.log(msg);
+        //console.log("my id:" + $scope.userId);
         msg.votes++;
         $scope.pushVote( msg, {
             voterId: rel_info.judgerUserId,
             voted: 1
         });
         var mine = $scope.getMyVote( msg );
-        console.log(mine);
+        //console.log(mine);
         if ( msg.userId == $scope.userId )
         {
             $scope.curScore += 10;
@@ -235,16 +237,9 @@ app.controller("MainCtrl", function($scope, $interval) {
         //stage: finished
         if ( $scope.phaseNo == 2 )
         {
-            $scope.messages.push({
-                userId: $scope.systemId,
-                msg: "< Round Fin! Sailor ("+ $scope.username + ") lands a final blow to the Kraken, sinking it to the depths of the sea >"
-            });
-            $scope.roundfinished = true;
-            $scope.reduceToOnlyGoodDialogue();
+            $scope.finishGame();
         }
-        //console.log("cont: "+$scope.roundTime);
         $scope.roundTime = Math.max(0, ($scope.roundTime-0.1)).toFixed(2);
-        //$scope.$apply();
     };
     $scope.resetTimer = function()
     {
@@ -262,35 +257,104 @@ app.controller("MainCtrl", function($scope, $interval) {
             $scope.gameover = true;
         }
     };
+    $scope.finishGame = function()
+    {
+        $scope.messages.push({
+            userId: $scope.systemId,
+            msg: "< Round Fin! Sailor ("+ $scope.username + ") lands a final blow to the Kraken, sinking it to the depths of the sea >"
+        });
+        $scope.roundfinished = true;
+
+        //filter only good dialogue (acceptedMsgs)
+        $scope.reduceToOnlyGoodDialogue();
+
+        //calculate user justice points
+        var numUserAlignedVotes = $scope.getActualJudgementPoints();
+
+        //save conversation in db
+        $scope.saveDialogueIfPossibleAll();
+
+        $scope.messages.push({
+            userId: $scope.systemId,
+            msg: "< Final Points: " +$scope.curScore+ " Judgement Points: " + numUserAlignedVotes*50 +"/"+$scope.curJudgePoints +" >"
+        });
+        $scope.messages.push({
+            userId: $scope.systemId,
+            msg: "< Voting alignment: " +numUserAlignedVotes +"/" +$scope.getUsersDialogueCount( $scope.userId ) +" >"
+        });
+        var objDiv = document.getElementById("messages");
+        objDiv.scrollTop = 1000000; //objDiv.scrollHeight;
+    };
+
+    ///////////////////////////////////////////////////////////////////////
     $scope.getActualJudgementPoints = function()
     {
         var userVote = 0;
+        var userVotesThatAlignWithMajority = 0;
         $scope.messages.forEach(function(msgObj) {
             var userVote = $scope.getMyVote( msgObj );
             var majorityVote = 0;
+            var majorityVoteCount = 0;
+            var votes = {};
             if ( userVote != 0 )
             {
+                //get count of each vote
                 msgObj.votesTot.forEach(function(msg) {
-
+                    if ( votes.hasOwnProperty( msg.voted ) )
+                        votes[msg.voted]++;
+                    else
+                        votes[msg.voted] = 0;
                 });
+                //loop over each vote(0/1/-1)
+                for (var voteType in votes) {
+                    if (votes.hasOwnProperty(voteType)) {
+                        if ( votes[voteType] >= majorityVoteCount )
+                        {
+                            majorityVoteCount = votes[voteType];
+                            majorityVote = voteType;
+                        }
+                    }
+                }
+                //check if majority vote aligns with user vote
+                if ( majorityVote == userVote )
+                    ++userVotesThatAlignWithMajority;
             }
         });
+        //Note: user doesn't know how many votes he aligned with until end
+        console.log("user aligned votes:"+userVotesThatAlignWithMajority+"/"+$scope.getUsersDialogueCount( $scope.userId ));
+        return userVotesThatAlignWithMajority;
+    };
+    $scope.getUsersDialogueCount = function( excludeId )
+    {
+        var count = 0;
+        $scope.messages.forEach(function(msgObj) {
+            if ( msgObj.userId != $scope.systemId && msgObj.userId != excludeId )
+                ++count;
+        });
+        return count;
     };
     //reduce to only good dialogue
     $scope.reduceToOnlyGoodDialogue = function()
     {
         $scope.messages.forEach(function(msgObj) {
-            if ( msgObj.votes > 0 && msgObj.username != $scope.systemId )
+            if ( msgObj.votes > 0 && msgObj.userId != $scope.systemId )
                 $scope.acceptedMsgs.push(msgObj);
         });
     };
     //save dialogue in db
+    $scope.saveDialogueIfPossibleAll = function()
+    {
+        console.log("saving all good dialogue. length:" + $scope.acceptedMsgs.length);
+        $scope.acceptedMsgs.forEach(function(msgObj) {
+            $scope.saveDialogueIfPossible( msgObj );
+        });
+    };
     $scope.saveDialogueIfPossible = function( angularMsgObj )
     {
-        if ( angularMsgObj.votes >= threshold_good )
+        //if ( angularMsgObj.votes >= threshold_good )
         {
             console.log("saving...! ");
-            var msgObjSend = createMsgObject( angularMsgObj );
+            var msgObjSend = createMsgObject( $scope.convoIdx, angularMsgObj );
             console.log(msgObjSend);
             dialogueObject.save( msgObjSend, {
                 success: function(object) {
@@ -322,12 +386,15 @@ app.controller("MainCtrl", function($scope, $interval) {
     }
 });
 
-var createMsgObject = function( angularMsgObj )
+var createMsgObject = function( convoIdx, angularMsgObj )
 {
     return {
+        convoIdx: convoIdx,
         username: angularMsgObj.username,
         userId: angularMsgObj.userId,
         msg: angularMsgObj.msg,
-        votes: angularMsgObj.votes
+        votes: angularMsgObj.votes,
+        msgIdx: angularMsgObj.msgIdx,
+        replyingToIdx: angularMsgObj.replyingToIdx ? angularMsgObj.replyingToIdx : ""
     };
 };
